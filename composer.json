@@ -1,0 +1,9 @@
+{
+  "name": "fasilofficial/pf-leads",
+  "autoload": {
+    "psr-4": {
+      "App\\": "app/"
+    }
+  },
+  "require": {}
+}
