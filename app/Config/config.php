@@ -32,3 +32,4 @@ define('LEAD_CLIENT_PHONE_FIELD_ID', getenv('LEAD_CLIENT_PHONE_FIELD_ID') ?: '')
 define('LEAD_CLIENT_EMAIL_FIELD_ID', getenv('LEAD_CLIENT_EMAIL_FIELD_ID') ?: '');
 define('LEAD_DESTINATION', getenv('LEAD_DESTINATION') ?: 'DEAL');
 define('CATEGORY_ID', getenv('CATEGORY_ID') ?: '');
+define('LEAD_FILE', __DIR__ . '/../../processed_leads.txt');

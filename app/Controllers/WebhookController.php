@@ -20,6 +20,14 @@ class WebhookController
             $payload = $incoming;
         }
 
+        // Deduplication Check
+        $leadId = $payload['id'] ?? null;
+        if ($leadId && $this->isLeadProcessed($leadId)) {
+            Logger::log(['event' => 'webhook.duplicate_ignored', 'lead_id' => $leadId]);
+            echo json_encode(["status" => "duplicate ignored", "lead_id" => $leadId]);
+            return;
+        }
+
         switch ($payload['type']) {
             case 'lead.created':
                 $this->handleLeadCreated($payload);
@@ -41,29 +49,57 @@ class WebhookController
     {
         try {
             $service = new BitrixService();
+            $leadId = $data['id'] ?? null;
 
-            // Skip Contact Creation as there are no users/contacts in temp CRM
+            // Maintain Temp CRM logic: skip contact creation
             $bitrixContactId = 0;
 
             $bitrixLeadId = $service->createLead($data, $bitrixContactId);
-            if (!$bitrixLeadId) {
-                throw new \Exception("Error creating Bitrix Deal");
+
+            if ($bitrixLeadId) {
+                // Save ID to file only after successful creation in Bitrix
+                if ($leadId) {
+                    $this->saveLeadId($leadId);
+                }
+
+                Logger::log([
+                    'event' => 'lead.created.processed',
+                    'lead_id' => $leadId,
+                    'bitrix_lead_id' => $bitrixLeadId
+                ]);
+
+                echo json_encode([
+                    "status" => "lead created processed",
+                    "bitrix_lead_id" => $bitrixLeadId
+                ]);
+            } else {
+                throw new \Exception("Error creating Bitrix lead");
             }
-
-            Logger::log([
-                'event' => 'lead.created.temp_crm',
-                'bitrix_lead_id' => $bitrixLeadId
-            ]);
-
-            echo json_encode([
-                "status" => "processed for temp crm",
-                "bitrix_lead_id" => $bitrixLeadId
-            ]);
         } catch (\Exception $e) {
             http_response_code(500);
             Logger::log(['event' => 'lead.created.error', 'error' => $e->getMessage()]);
             echo json_encode(["error" => $e->getMessage()]);
         }
+    }
+
+    /**
+     * Checks if a lead ID has already been processed
+     */
+    private function isLeadProcessed($id): bool
+    {
+        if (!file_exists(LEAD_FILE)) {
+            return false;
+        }
+        $processedIds = file(LEAD_FILE, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+        return in_array($id, $processedIds);
+    }
+
+    /**
+     * Saves a lead ID to the processed leads file
+     */
+    private function saveLeadId($id): void
+    {
+        file_put_contents(LEAD_FILE, $id . PHP_EOL, FILE_APPEND);
     }
 
     private function handleLeadUpdated($data)
