@@ -51,6 +51,7 @@ class WebhookController
     {
         try {
             $service = new BitrixService();
+            $leadId = $data['id'] ?? null;
 
             $sender = $data['payload']['sender'] ?? null;
             if (!$sender || empty($sender['contacts'])) {
@@ -65,6 +66,10 @@ class WebhookController
             $bitrixLeadId = $service->createLead($data, $bitrixContactId);
             if (!$bitrixLeadId) {
                 throw new \Exception("Error creating Bitrix lead");
+            }
+
+            if ($leadId && $bitrixLeadId) {
+                $this->saveLeadId($leadId);
             }
 
             Logger::log([
