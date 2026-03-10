@@ -2,6 +2,8 @@
 
 namespace App\Controllers;
 
+require_once __DIR__ . '/../Config/config.php';
+
 use App\Core\Logger;
 use App\Core\BitrixService;
 
