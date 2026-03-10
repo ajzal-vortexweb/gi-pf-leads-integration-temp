@@ -51,32 +51,33 @@ class WebhookController
     {
         try {
             $service = new BitrixService();
-            $leadId = $data['id'] ?? null;
 
-            // Maintain Temp CRM logic: skip contact creation
-            $bitrixContactId = 0;
+            $sender = $data['payload']['sender'] ?? null;
+            if (!$sender || empty($sender['contacts'])) {
+                throw new \Exception("Missing sender contact details");
+            }
+
+            $bitrixContactId = $service->createContact($sender);
+            if (!$bitrixContactId) {
+                throw new \Exception("Error creating Bitrix contact");
+            }
 
             $bitrixLeadId = $service->createLead($data, $bitrixContactId);
-
-            if ($bitrixLeadId) {
-                // Save ID to file only after successful creation in Bitrix
-                if ($leadId) {
-                    $this->saveLeadId($leadId);
-                }
-
-                Logger::log([
-                    'event' => 'lead.created.processed',
-                    'lead_id' => $leadId,
-                    'bitrix_lead_id' => $bitrixLeadId
-                ]);
-
-                echo json_encode([
-                    "status" => "lead created processed",
-                    "bitrix_lead_id" => $bitrixLeadId
-                ]);
-            } else {
+            if (!$bitrixLeadId) {
                 throw new \Exception("Error creating Bitrix lead");
             }
+
+            Logger::log([
+                'event' => 'lead.created',
+                'bitrix_contact_id' => $bitrixContactId,
+                'bitrix_lead_id' => $bitrixLeadId
+            ]);
+
+            echo json_encode([
+                "status" => "lead created processed",
+                "bitrix_contact_id" => $bitrixContactId,
+                "bitrix_lead_id" => $bitrixLeadId
+            ]);
         } catch (\Exception $e) {
             http_response_code(500);
             Logger::log(['event' => 'lead.created.error', 'error' => $e->getMessage()]);
