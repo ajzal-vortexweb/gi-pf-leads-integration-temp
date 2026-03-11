@@ -43,7 +43,6 @@ class BitrixService
                 }
             }
             return $contactId;
-
         } catch (\Exception $e) {
             Logger::log(['event' => 'bitrix.create.contact.error', 'error' => $e->getMessage()]);
             throw new \Exception('Error creating Bitrix contact: ' . $e->getMessage());
@@ -147,6 +146,23 @@ class BitrixService
                 if (!empty($contacts['PHONE'])) $fields['PHONE'] = $contacts['PHONE'];
                 if (!empty($contacts['EMAIL'])) $fields['EMAIL'] = $contacts['EMAIL'];
             } else { // DEAL
+                $formattedPrice = '';
+                if (!empty($listing['price']['amounts']) && is_array($listing['price']['amounts'])) {
+                    foreach ($listing['price']['amounts'] as $key => $value) {
+                        if (!empty($value)) {
+                            $type = ucfirst($key);
+                            $formattedPrice = number_format($value) . " ({$type})";
+                            break;
+                        }
+                    }
+                }
+
+                $formattedArea = !empty($listing['size']) ? $listing['size'] . " sqft" : '';
+
+                $formattedLocation = !empty($listingLocation[LOCATION_FIELD_ID])
+                    ? ucfirst($listingLocation[LOCATION_FIELD_ID])
+                    : '';
+
                 $fields = [
                     'TITLE' => $title,
                     'STATUS_ID' => 'NEW',
@@ -159,7 +175,16 @@ class BitrixService
                     LEAD_TRACKING_LINK_FIELD_ID => $payload['responseLink'] ?? '',
                     LEAD_CLIENT_NAME_FIELD_ID => $sender['name'] ?? '',
                     LEAD_CLIENT_PHONE_FIELD_ID => $phoneValue,
-                    LEAD_CLIENT_EMAIL_FIELD_ID => $emailValue
+                    LEAD_CLIENT_EMAIL_FIELD_ID => $emailValue,
+
+                    LEAD_PROPERTY_TYPE_FIELD_ID   => $listing['type'] ?? '',
+                    LEAD_BEDROOMS_FIELD_ID        => $listing['bedrooms'] ?? '',
+                    LEAD_BATHROOMS_FIELD_ID       => $listing['bathrooms'] ?? '',
+                    LEAD_AREA_FIELD_ID            => $formattedArea,
+                    LEAD_FURNISHING_FIELD_ID      => $listing['furnishingType'] ?? '',
+                    LEAD_PROJECT_STATUS_FIELD_ID  => $listing['projectStatus'] ?? '',
+                    LEAD_PRICE_FIELD_ID           => $formattedPrice,
+                    LEAD_LOCATION_FIELD_ID        => $formattedLocation,
                 ];
                 if (!empty(CATEGORY_ID)) $fields['CATEGORY_ID'] = CATEGORY_ID;
             }
